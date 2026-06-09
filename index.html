@@ -876,31 +876,68 @@ function botSay(text,withChips){
     chatBody.appendChild(chips); }
   chatBody.scrollTop=chatBody.scrollHeight;
 }
+function answerFromContent(text){
+  const c=content||{};
+  const s=(text||'').toLowerCase();
+  const has=(...w)=>w.some(x=>s.includes(x));
+  const A=c.assemblies||[];
+  const named=A.find(a=>a.name&&s.includes(a.name.toLowerCase()));
+
+  if(/(^|\b)(hi|hello|hey|hallo|akwaaba|good (morning|afternoon|evening)|peace be|greetings)\b/.test(s))
+    return "Peace be unto you! \ud83d\udd4a\ufe0f I can help with service times, our six assemblies, our leadership, how to join, giving, prayer, and how to reach us. What would you like to know?";
+
+  if(has('thank','god bless','amen','bless you'))
+    return "You're most welcome \u2014 God bless you! \ud83d\ude4f Is there anything else I can help you with?";
+
+  if(named)
+    return named.name+" Assembly \u2014 established "+named.est+". Presiding Elder: "+named.pe+". Sunday Worship is at 9:00 AM.\n\n"+(named.hist||"");
+
+  if(has('service','what time','sunday','worship','midweek','prayer meeting','schedule','programme','program','when is'))
+    return "Our service times:\n\u2022 Sunday Worship \u2014 9:00 AM (every assembly)\n\u2022 Midweek Service \u2014 Wednesday, 6:00 PM\n\u2022 Prayer Meeting \u2014 Friday, 6:00 PM\n\u2022 Youth Service \u2014 Saturday, 4:00 PM\n\nWe'd love to worship with you!";
+
+  if(has('join','become a member','sign up','signup','register','membership','new member','first time','visit'))
+    return "We'd be delighted to have you! \ud83d\ude4c Come to any of our six assemblies for Sunday Worship at 9:00 AM, or tap \u201cSign In \u2192 Sign Up\u201d on this site to register as a member."+(c.email?" You can also email us at "+c.email+".":"");
+
+  if(has('pastor','leader','leadership','executive','presiding','elder','overseer','in charge','who leads','who is the head')){
+    const E=c.executives||[];
+    let r=E[0]?("Our District Pastor is "+E[0].name+"."):"";
+    if(E.length) r+=" The District Executive Committee includes:\n"+E.map(e=>"\u2022 "+e.name+" \u2014 "+e.role).join("\n");
+    return r||"Our leadership information is in the District Executive section of this site.";
+  }
+
+  if(has('about','history','founded','started','establish','who are you','vision','mission','tell me about the church','tell me about anyaa'))
+    return (c.about||[]).join("\n\n")||"The Church of Pentecost, Anyaa District is part of the Anyaa Ablekuma Area in Accra, Ghana \u2014 six local assemblies committed to worship, discipleship and evangelism.";
+
+  if(has('pray','intercede','need prayer'))
+    return "We would be honoured to pray with you. \ud83d\ude4f Please send your request through the WhatsApp button"+(c.email?" or email "+c.email:"")+", and our ministers will stand with you. You're also welcome at our Prayer Meeting on Fridays at 6:00 PM.";
+
+  if(has('salvation','saved','born again','accept jesus','give my life','believe','gospel','how do i get to heaven'))
+    return "That is the most important decision anyone can make. \ud83d\ude4f \u201cIf you confess with your mouth that Jesus is Lord and believe in your heart that God raised Him from the dead, you will be saved.\u201d Please come to any assembly this Sunday, or reach us on WhatsApp, and someone will pray with and guide you.";
+
+  if(has('give','giving','offering','tithe','donate','contribution','seed'))
+    return "Thank you for your heart to give. \ud83d\ude4f You can give during any service, or contact us via the WhatsApp button"+(c.email?" or email "+c.email:"")+" for the church's giving details.";
+
+  if(has('live','stream','online','watch','youtube','facebook live'))
+    return "Join our services live in the Media section of this site, and follow us on Facebook (facebook.com/copanyaadistrictofficial). Live streams appear during service times.";
+
+  if(has('contact','phone','call','reach','whatsapp','email','number','address','where are you','located','location','find you','direction'))
+    return "You can reach us:\n\u2022 WhatsApp \u2014 tap the green button on this site\n"+(c.email?"\u2022 Email \u2014 "+c.email+"\n":"")+"\u2022 Facebook \u2014 facebook.com/copanyaadistrictofficial\n\u2022 In person \u2014 Anyaa, Ablekuma, Accra (Sundays at 9:00 AM)";
+
+  if(has('assembl','branch','how many','six','list','churches','where do you meet'))
+    return "The Anyaa District has six local assemblies, all worshipping at 9:00 AM on Sundays:\n"+A.map(a=>"\u2022 "+a.name+" \u2014 "+a.pe).join("\n")+"\n\nAsk me about any one by name for its story.";
+
+  return "I'm the Anyaa District helper. I can tell you about our service times, the six assemblies (Central, Maranatha, NIC, Nsumfa, Berea, Bethel), our leadership, how to join, giving, prayer, and how to reach us. For anything else, please tap the WhatsApp button"+(c.email?" or email "+c.email:"")+" and a member of our team will gladly help you.";
+}
+
 async function sendMsg(){
   const input=$('chatInput'); const text=input.value.trim(); if(!text)return; input.value='';
   document.querySelectorAll('.chips').forEach(c=>c.remove());
   const me=document.createElement('div'); me.className='msg me'; me.textContent=text; chatBody.appendChild(me);
-  const typing=document.createElement('div'); typing.className='msg bot typing'; typing.textContent='typing…'; chatBody.appendChild(typing);
-  chatBody.scrollTop=chatBody.scrollHeight; history.push({role:'user',content:text});
+  const typing=document.createElement('div'); typing.className='msg bot typing'; typing.textContent='typing\u2026'; chatBody.appendChild(typing);
+  chatBody.scrollTop=chatBody.scrollHeight;
   const btn=$('sendBtn'); btn.disabled=true;
-  try{
-    let reply;
-    if(MODE==='supabase'){
-      const {data,error}=await sb.functions.invoke('chat',{body:{messages:history}});
-      if(error) throw error;
-      reply=data&&data.reply;
-    }else{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:buildSystemPrompt(),messages:history})
-      });
-      const data=await res.json();
-      reply=(data.content||[]).map(b=>b.type==='text'?b.text:'').join('\n').trim();
-    }
-    reply=reply||"I'm sorry, I couldn't respond just now. Please try the WhatsApp button.";
-    typing.remove(); botSay(reply); history.push({role:'assistant',content:reply});
-  }catch(err){ typing.remove(); botSay("I'm having trouble connecting right now. Please tap the green WhatsApp button to chat with us directly. 🙏"); }
-  finally{ btn.disabled=false; chatBody.scrollTop=chatBody.scrollHeight; }
+  const reply=answerFromContent(text);
+  setTimeout(()=>{ typing.remove(); botSay(reply); btn.disabled=false; chatBody.scrollTop=chatBody.scrollHeight; }, 450);
 }
 </script>
 <script>
