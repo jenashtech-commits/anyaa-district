@@ -345,6 +345,7 @@ nav.menu a:hover{ transform:translateY(-1px); }
 .reveal{ transition:opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ outline:2px solid var(--cop-blue-light); outline-offset:2px; }
 @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+.pe-av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--cop-red);flex:none}
 </style>
 </head>
 <body>
@@ -690,7 +691,7 @@ function renderAssemblies(){
       <div class="top"><span class="badge">Est. ${a.est}</span><small>${a.tag}</small><h3>${a.name}</h3></div>
       <div class="body">
         <div class="row">${clk} Sunday Worship · 9:00 AM</div>
-        <div class="row">${per} ${a.pe}${a.phone?` · <a class="callbtn" href="tel:${esc(a.phone)}">📞 Call</a>`:``}</div>
+        <div class="row">${a.peImg?`<img class="pe-av" src="${esc(a.peImg)}" alt="">`:per} ${a.pe}${a.phone?` · <a class="callbtn" href="tel:${esc(a.phone)}">📞 Call</a>`:``}</div>
         <div class="row">${pin} ${a.status}</div>
         <div class="mem">
           <div><b>${a.adults}</b><span>Adults</span></div>
@@ -864,6 +865,7 @@ function editAsm(i){
       <div class="field"><label>Presiding Elder</label><input id="g_pe" value="${esc(a.pe)}"></div>
       <div class="field"><label>Presiding Elder phone (optional)</label><input id="g_phone" value="${esc(a.phone||'')}" placeholder="024 000 0000"></div>
       <div class="field"><label>Local Facebook page link (optional)</label><input id="g_fb" value="${esc(a.facebook||'')}" placeholder="https://facebook.com/..."></div>
+      <div class="field"><label>Presiding Elder photo (upload, or paste a link)</label><input id="g_peimg" value="${esc(a.peImg||'')}" placeholder="optional photo link"><input id="g_peimgfile" type="file" accept="image/*" style="margin-top:8px" onchange="uploadImageField('g_peimgfile','g_peimg','g_peimginfo','assemblies')"><div class="hint" id="g_peimginfo"></div></div>
       <div class="field"><label>Adults</label><input id="g_ad" type="number" value="${a.adults}"></div>
       <div class="field"><label>Children</label><input id="g_ch" type="number" value="${a.children}"></div>
       <div class="field"><label>Presbyters</label><input id="g_pr" type="number" value="${a.presbyters}"></div>
@@ -874,7 +876,7 @@ function editAsm(i){
 async function saveAsm(i){
   const a=content.assemblies[i];
   a.name=$('g_name').value; a.tag=$('g_tag').value; a.est=$('g_est').value; a.status=$('g_status').value;
-  a.pe=$('g_pe').value; a.phone=$('g_phone').value.trim(); a.facebook=$('g_fb').value.trim(); a.adults=+$('g_ad').value||0; a.children=+$('g_ch').value||0; a.presbyters=+$('g_pr').value||0; a.hist=$('g_hist').value;
+  a.pe=$('g_pe').value; a.phone=$('g_phone').value.trim(); a.facebook=$('g_fb').value.trim(); a.peImg=$('g_peimg').value.trim(); a.adults=+$('g_ad').value||0; a.children=+$('g_ch').value||0; a.presbyters=+$('g_pr').value||0; a.hist=$('g_hist').value;
   await save(); closeModal();
 }
 
@@ -901,7 +903,7 @@ function editExec(i){
       <div class="field"><label>Full Name</label><input id="e_name" value="${esc(e.name)}" placeholder="e.g. Eld. John Mensah"></div>
       <div class="field"><label>Role / Position</label><input id="e_role" value="${esc(e.role)}" placeholder="e.g. District Secretary"></div>
       <div class="field"><label>Phone (optional)</label><input id="e_phone" value="${esc(e.phone||'')}" placeholder="024 000 0000"></div>
-      <div class="field"><label>Photo URL (optional)</label><input id="e_img" value="${esc(e.img||'')}" placeholder="https://...jpg — leave blank to use an icon"></div>
+      <div class="field"><label>Photo (upload from phone/computer, or paste a link)</label><input id="e_img" value="${esc(e.img||'')}" placeholder="optional photo link"><input id="e_imgfile" type="file" accept="image/*" style="margin-top:8px" onchange="uploadImageField('e_imgfile','e_img','e_imginfo','executives')"><div class="hint" id="e_imginfo"></div></div>
       <div class="field"><label>Icon (used if no photo)</label><input id="e_ic" value="${esc(e.ic||'👤')}" maxlength="2"></div>
       <button class="btn btn-blue full-btn" onclick="saveExec(${i})">Save</button>
     </div>`);
@@ -1234,6 +1236,13 @@ async function uploadPostImg(){
   const info=$('p_imginfo'); info.textContent='Uploading\u2026';
   try{ const r=await uploadToStorage(f,'posts'); $('p_img').value=r.url; info.textContent='Image uploaded \u2713'; }
   catch(e){ info.textContent=e.message||'Upload failed'; }
+}
+
+async function uploadImageField(fileId, targetId, infoId, folder){
+  const f=$(fileId).files[0]; if(!f) return;
+  const info=$(infoId); if(info) info.textContent='Uploading\u2026';
+  try{ const r=await uploadToStorage(f, folder); $(targetId).value=r.url; if(info) info.textContent='Image uploaded \u2713'; }
+  catch(e){ if(info) info.textContent=(e&&e.message)||'Upload failed'; }
 }
 
 function manageLive(){
